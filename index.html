@@ -46,7 +46,75 @@ function renderStation(){const s=stations[currentStation];document.getElementByI
 function renderQuestion(){stopTimer();locked=false;const s=stations[currentStation];if(currentQuestion>=s.questions.length){renderResults();return}
 const q=s.questions[currentQuestion];quiz.innerHTML=`<div class="topline"><span class="tag">Frage ${currentQuestion+1} von 3</span><span class="timer">⏱ <span id="timerText">1:00</span></span></div><div class="bar"><span id="timerBar"></span></div><h3>${q.q}</h3><div class="answers" id="answers"></div><div class="feedback" id="feedback" aria-live="polite"></div><div class="actions" id="actions"></div>`;
 const letters=['A','B','C'];q.a.forEach((a,i)=>{const b=document.createElement('button');b.className='answer';b.innerHTML=`<span class="letter">${letters[i]}.</span><span></span>`;b.children[1].textContent=a;b.onclick=()=>checkAnswer(i);document.getElementById('answers').appendChild(b)});startTimer()}
-function checkAnswer(index){if(locked)return;const q=stations[currentStation].questions[currentQuestion];if(index===q.correct){locked=true;stopTimer();score++;answersCorrect++;document.querySelectorAll('.answer').forEach((b,i)=>{b.disabled=true;if(i===q.correct)b.classList.add('correct')});const f=document.getElementById('feedback');f.className='feedback show';f.innerHTML='<strong>Richtig beantwortet.</strong>';const p=document.createElement('p');p.textContent=q.why;f.appendChild(p);const btn=document.createElement('button');btn.className='primary';btn.textContent=currentQuestion===2?'Ergebnis anzeigen':'Nächste Frage';btn.onclick=()=>{currentQuestion++;renderQuestion()};document.getElementById('actions').appendChild(btn)}else{const b=document.querySelectorAll('.answer')[index];b.classList.add('wrong');b.disabled=true;const f=document.getElementById('feedback');f.className='feedback show';f.textContent='Nicht richtig. Die Zeit läuft weiter – wähle eine andere Antwort.'}}
+function checkAnswer(index){
+  if(locked)return;
+  const f=document.getElementById('feedback');
+  const buttons=document.querySelectorAll('.answer');
+  buttons.forEach(b=>b.disabled=true);
+  f.className='feedback show';
+  f.innerHTML='<strong>Bist du dir sicher, dass du diese Antwort abgeben möchtest?</strong><div class="actions"><button class="primary" id="confirmAnswer">Ja, bestätigen</button><button class="secondary" id="cancelAnswer">Nein, zurück</button></div>';
+  document.getElementById('confirmAnswer').onclick=()=>submitAnswer(index);
+  document.getElementById('cancelAnswer').onclick=()=>{
+    f.className='feedback';
+    f.innerHTML='';
+    buttons.forEach(b=>b.disabled=b.classList.contains('wrong'));
+  };
+}
+function submitAnswer(index){
+  if(locked)return;
+  const q=stations[currentStation].questions[currentQuestion];
+  const buttons=document.querySelectorAll('.answer');
+  const f=document.getElementById('feedback');
+  if(index===q.correct){
+    locked=true;
+    stopTimer();
+    score++;
+    answersCorrect++;
+    buttons.forEach((b,i)=>{
+      b.disabled=true;
+      if(i===q.correct)b.classList.add('correct');
+    });
+    f.className='feedback show';
+    f.innerHTML='<strong>Richtig beantwortet.</strong>';
+    const p=document.createElement('p');
+    p.textContent=q.why;
+    f.appendChild(p);
+    const btn=document.createElement('button');
+    btn.className='primary';
+    btn.textContent=currentQuestion===2?'Ergebnis anzeigen':'Nächste Frage';
+    btn.onclick=()=>{currentQuestion++;renderQuestion()};
+    document.getElementById('actions').appendChild(btn);
+  }else{
+    const b=buttons[index];
+    b.classList.add('wrong');
+    b.disabled=true;
+    const attempts=document.querySelectorAll('.answer.wrong').length;
+    f.className='feedback show';
+    f.innerHTML='';
+    if(attempts<2){
+      f.textContent='Nicht richtig. Du hast noch genau einen Versuch.';
+      buttons.forEach(button=>{
+        button.disabled=button.classList.contains('wrong');
+      });
+    }else{
+      locked=true;
+      stopTimer();
+      buttons.forEach(button=>button.disabled=true);
+      f.innerHTML='<strong>Beide Versuche waren falsch.</strong>';
+      const p=document.createElement('p');
+      p.textContent='Richtige Antwort: '+['A','B','C'][q.correct]+'. '+q.a[q.correct];
+      f.appendChild(p);
+      const explanation=document.createElement('p');
+      explanation.textContent=q.why;
+      f.appendChild(explanation);
+      const btn=document.createElement('button');
+      btn.className='primary';
+      btn.textContent=currentQuestion===2?'Ergebnis anzeigen':'Nächste Frage';
+      btn.onclick=()=>{currentQuestion++;renderQuestion()};
+      document.getElementById('actions').appendChild(btn);
+    }
+  }
+}
 function timeUp(){if(locked)return;locked=true;document.querySelectorAll('.answer').forEach(b=>b.disabled=true);const q=stations[currentStation].questions[currentQuestion];const f=document.getElementById('feedback');f.className='feedback show';f.innerHTML='<strong>Zeit abgelaufen.</strong>';const p=document.createElement('p');p.textContent='Lösung: '+['A','B','C'][q.correct]+'. '+q.a[q.correct]+'. '+q.why;f.appendChild(p);const btn=document.createElement('button');btn.className='primary';btn.textContent=currentQuestion===2?'Ergebnis anzeigen':'Weiter zur nächsten Frage';btn.onclick=()=>{currentQuestion++;renderQuestion()};document.getElementById('actions').appendChild(btn)}
 function renderResults(){stopTimer();const s=stations[currentStation];quiz.innerHTML=`<span class="tag">Station abgeschlossen</span><h3>Gut gemacht – Station ${currentStation+1}</h3><p>Richtig beim ersten Versuch: ${score} von 3 Fragen.</p><p>Merke: Folge immer den geltenden örtlichen Dienstanweisungen und den Anweisungen der zuständigen Stellen.</p><div class="actions"></div>`;const actions=quiz.querySelector('.actions');if(false&&currentStation<stations.length-1){const b=document.createElement('button');b.className='primary';b.textContent='Nächste Station';b.onclick=()=>{currentStation++;currentQuestion=0;score=0;renderStation()};actions.appendChild(b)}const restart=document.createElement('button');restart.className='secondary';restart.textContent='Station wiederholen';restart.onclick=()=>{currentQuestion=0;score=0;renderQuestion()};actions.appendChild(restart)}
 renderStation();
